@@ -1,0 +1,27 @@
+# Reference frontend (study only)
+frontend_LLM/
+
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/**/*.db
+*.pyc
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env / local
+.env
+.env.local
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Docker
+*.log

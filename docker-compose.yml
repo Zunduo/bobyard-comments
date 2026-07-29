@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/comments.db
+    volumes:
+      - comments_sqlite:/data
+
+  frontend:
+    build:
+      context: ./comments-app
+      args:
+        VITE_API_BASE: http://localhost:8000/api/comments
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+
+volumes:
+  comments_sqlite:
