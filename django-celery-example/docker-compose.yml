@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: imagegen
+      POSTGRES_USER: imagegen
+      POSTGRES_PASSWORD: imagegen
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imagegen -d imagegen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    ports:
+      - "8001:8000"
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_SECRET_KEY: dev-secret-key
+      POSTGRES_DB: imagegen
+      POSTGRES_USER: imagegen
+      POSTGRES_PASSWORD: imagegen
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      IMAGE_GENERATION_SECONDS: "8"
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build: .
+    command: celery -A config worker --loglevel=info --concurrency=2
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_SECRET_KEY: dev-secret-key
+      POSTGRES_DB: imagegen
+      POSTGRES_USER: imagegen
+      POSTGRES_PASSWORD: imagegen
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      IMAGE_GENERATION_SECONDS: "8"
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_SECRET_KEY: dev-secret-key
+      POSTGRES_DB: imagegen
+      POSTGRES_USER: imagegen
+      POSTGRES_PASSWORD: imagegen
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  media_data:
